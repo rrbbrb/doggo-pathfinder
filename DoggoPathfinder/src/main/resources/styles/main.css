@@ -1,0 +1,32 @@
+body {
+    background-color: lightGreen;
+}
+
+table {
+    border-spacing: 0px;
+    border: 0.5px solid lightYellow;
+    margin-left: auto;
+    margin-right:auto;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.grid-container {
+    margin-left: auto;
+    margin-right:auto;
+    color: brown;
+    font-family: Monospace;
+    font-size: 27px;
+}
+
+td {
+    border: 0.5px solid lightYellow;
+    height: 38px;
+    width: 38px;
+    cursor: pointer;
+    padding: 0px;
+}
+
+td:hover, td:focus, td:active {
+    background-color: lightYellow;
+}
