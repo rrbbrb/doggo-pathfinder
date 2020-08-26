@@ -1,21 +1,27 @@
 external interface IQueue<T> {
     var queue: List<T>
     fun getQueue(): List<T>
-    fun deque()
+    fun deque(): T?
     fun enqueue(t: T)
     fun poll(t: T)
     fun peek(): T?
     fun contains(t: T): Boolean
     fun isEmpty(): Boolean
     fun isNotEmpty(): Boolean
+    fun removeAll()
 }
 
 data class Queue(override var queue: List<Node> = mutableListOf<Node>()): IQueue<Node> {
 
     override fun getQueue(): List<Node> = this.queue
 
-    override fun deque() {
-        if(this.queue.isNotEmpty()) this.queue -= this.queue[0]
+    override fun deque(): Node? {
+        if(this.queue.isNotEmpty()) {
+            val node = this.queue[0]
+            this.queue -= this.queue[0]
+            return node
+        }
+        return null
     }
 
     override fun enqueue(t: Node) {
@@ -37,4 +43,9 @@ data class Queue(override var queue: List<Node> = mutableListOf<Node>()): IQueue
     override fun isEmpty(): Boolean = this.queue.isEmpty()
 
     override fun isNotEmpty(): Boolean = this.queue.isNotEmpty()
+
+    override fun removeAll() {
+        while(this.isNotEmpty())
+            this.deque()
+    }
 }
