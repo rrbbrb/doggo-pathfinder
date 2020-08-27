@@ -4,6 +4,7 @@ import kotlinx.html.js.onClickFunction
 
 const val NUMBER_OF_ROWS = 15
 const val NUMBER_OF_COLS = 25
+const val TOTAL_CELLS = NUMBER_OF_ROWS * NUMBER_OF_COLS
 
 external interface AppState: RState {
     var nodes: ArrayList<Node>
@@ -31,6 +32,7 @@ class App: RComponent<RProps,AppState>() {
     }
 
     private fun bfs() {
+        clearPath()
         setState {
             queuing.enqueue(start)
             while(queuing.isNotEmpty()) {
@@ -42,6 +44,7 @@ class App: RComponent<RProps,AppState>() {
                         path += visited[node]
                         node = visited[node]
                     }
+                    path = path.reversed()
                 }
                 for(neighbor in neighbors) {
                     if(!visited.containsKey(neighbor)) {
@@ -49,11 +52,6 @@ class App: RComponent<RProps,AppState>() {
                         visited[neighbor] = node
                     }
                 }
-            }
-            println("start node = node-${start.row}-${start.col}")
-            println("end node = node-${end.row}-${end.col}")
-            for(node in path) {
-                println("node-${node?.row}-${node?.col}")
             }
         }
     }
@@ -65,20 +63,17 @@ class App: RComponent<RProps,AppState>() {
         val down = i + NUMBER_OF_COLS
         val left = i - 1
         val right = i + 1
+        fun isWall(node: Node): Boolean = state.walls.contains(node)
+        fun isStart(node: Node): Boolean = node == state.start
+        fun withinRange(index: Int): Boolean = index in 0 until TOTAL_CELLS
+        fun sideEdge(): Boolean = (i % NUMBER_OF_COLS == NUMBER_OF_COLS-1) || (i % NUMBER_OF_COLS == 0)
+        fun qualify(index: Int): Boolean = withinRange(index) && !isWall(state.nodes[index]) && !isStart(state.nodes[index])
+        fun qualifySide(index: Int): Boolean = !sideEdge() && qualify(index)
 
-        if (right < state.nodes.size && !state.walls.contains(state.nodes[right]) && state.nodes[right] != state.start)
-            neighbors += state.nodes[i+1]
-
-        if (down < state.nodes.size && !state.walls.contains(state.nodes[down]) && state.nodes[down] != state.start)
-            neighbors += state.nodes[i+NUMBER_OF_COLS]
-
-        if (i % NUMBER_OF_COLS != 0 && left >= 0 && !state.walls.contains(state.nodes[left]) &&
-            state.nodes[left] != state.start)
-            neighbors += state.nodes[i-1]
-
-        if (i % NUMBER_OF_COLS != NUMBER_OF_COLS-1 && up >= 0 && !state.walls.contains(state.nodes[up]) &&
-            state.nodes[up] != state.start)
-            neighbors += state.nodes[i-NUMBER_OF_COLS]
+        if(qualifySide(right)) neighbors += state.nodes[right]
+        if(qualify(down)) neighbors += state.nodes[down]
+        if(qualifySide(left)) neighbors += state.nodes[left]
+        if(qualify(up)) neighbors += state.nodes[up]
 
         return neighbors
     }
@@ -88,20 +83,30 @@ class App: RComponent<RProps,AppState>() {
         state.end = state.nodes[194]
     }
 
-    private fun resetNodes() {
+    private fun clearWalls() {
         setState {
             for(wall in walls) {
                 walls -= wall
             }
+        }
+    }
+
+    private fun clearPath() {
+        setState {
             for(node in path) {
                 path -= node
             }
             queuing.removeAll()
             visited.clear()
-            selectingWalls = false
+            selectingWalls = true
             selectingStart = false
             selectingEnd = false
         }
+    }
+
+    private fun resetAll() {
+        clearWalls()
+        clearPath()
     }
 
     private fun selectingWalls() {
@@ -118,6 +123,32 @@ class App: RComponent<RProps,AppState>() {
 
     override fun RBuilder.render() {
         div("grid-container") {
+            div("control-panel"){
+                button {
+                    attrs { onClickFunction = { resetAll() } }
+                    +"reset"
+                }
+                button {
+                    attrs { onClickFunction = { clearWalls() } }
+                    +"clear board"
+                }
+                button {
+                    attrs { onClickFunction = { selectingWalls() } }
+                    +"walls"
+                }
+                button {
+                    attrs { onClickFunction = { selectingStart() } }
+                    +"start"
+                }
+                button {
+                    attrs { onClickFunction = { selectingEnd() } }
+                    +"end"
+                }
+                button {
+                    attrs { onClickFunction = { bfs() } }
+                    +"BFS"
+                }
+            }
             table {
                 tbody {
                     for(i in 1..NUMBER_OF_ROWS) {
@@ -153,10 +184,34 @@ class App: RComponent<RProps,AppState>() {
                                         }
                                     }
                                     when {
-                                        state.walls.contains(node) -> +"\uD83C\uDF33"
-                                        state.start == node -> +"🐶"
-                                        state.end == node -> +"⚾"
-                                        state.path.contains(node) -> +"\uD83D\uDC3E"
+                                        state.walls.contains(node) -> {
+                                            img(classes = "board-element", alt = "tree") {
+                                                attrs {
+                                                    src = "https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/microsoft/209/deciduous-tree_1f333.png"
+                                                }
+                                            }
+                                        }
+                                        state.start == node -> {
+                                            img(classes = "board-element", alt = "dog") {
+                                                attrs {
+                                                    src = "https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/microsoft/209/dog-face_1f436.png"
+                                                }
+                                            }
+                                        }
+                                        state.end == node -> {
+                                            img(classes = "board-element", alt = "ball") {
+                                                attrs {
+                                                    src = "https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/microsoft/209/baseball_26be.png"
+                                                }
+                                            }
+                                        }
+                                        state.path.contains(node) -> {
+                                            img(classes = "board-element", alt = "paw") {
+                                                attrs {
+                                                    src = "https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/apple/237/paw-prints_1f43e.png"
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -165,27 +220,6 @@ class App: RComponent<RProps,AppState>() {
                     if(!state.startEndInitialized) initializeStartEnd()
                 }
             }
-            button {
-                attrs { onClickFunction = { resetNodes() } }
-                +"reset"
-            }
-            button {
-                attrs { onClickFunction = { selectingWalls() } }
-                +"walls"
-            }
-            button {
-                attrs { onClickFunction = { selectingStart() } }
-                +"start"
-            }
-            button {
-                attrs { onClickFunction = { selectingEnd() } }
-                +"end"
-            }
-            button {
-                attrs { onClickFunction = { bfs() } }
-                +"BFS"
-            }
         }
-
     }
 }

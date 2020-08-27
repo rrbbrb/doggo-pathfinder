@@ -2,32 +2,61 @@ body {
     background-color: lightGreen;
 }
 
-table {
-    border-spacing: 0px;
-    border: 3px solid gray;
-    margin-left: auto;
-    margin-right:auto;
-    text-align: center;
-    vertical-align: middle;
-}
-
 .grid-container {
     margin-left: auto;
-    margin-right:auto;
+    margin-right: auto;
     color: brown;
     font-family: Monospace;
     font-size: 27px;
 }
 
+.control-panel {
+    text-align: center;
+    margin: 1rem 0;
+}
+
+button {
+    background-color: #FF916F;
+    border: 2.5px solid #000;
+    border-radius: 5px;
+    padding: 10px 20px;
+    margin: 5px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-weight: 500;
+    font-size: 1.25rem;
+}
+
+button:focus, button:active {
+    outline: none;
+}
+
+table {
+    border-spacing: 0px;
+    border: 3px solid #000;
+    margin-left: auto;
+    margin-right:auto;
+}
+
 td {
     background-color: lightYellow;
-    border: 0.5px solid gray;
+    border: 0.5px solid #000;
     height: 38px;
     width: 38px;
     cursor: pointer;
     padding: 0px;
+    text-align: center;
+    vertical-align: middle;
 }
 
 td:hover, td:focus, td:active {
     background-color: #FF916F;
+}
+
+.board-element {
+    vertical-align: middle;
+    width: 100%;
+    max-width: 30px;
+    padding: 0;
+    margin: 0;
 }
