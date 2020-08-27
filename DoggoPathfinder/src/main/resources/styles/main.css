@@ -1,5 +1,5 @@
 body {
-    background-color: lightGreen;
+    background-color: #AAE9ED;
 }
 
 .grid-container {
@@ -16,7 +16,7 @@ body {
 }
 
 button {
-    background-color: #FF916F;
+    background-color: #10BC02;
     border: 2.5px solid #000;
     border-radius: 5px;
     padding: 10px 20px;
@@ -59,4 +59,30 @@ td:hover, td:focus, td:active {
     max-width: 30px;
     padding: 0;
     margin: 0;
+}
+
+.visited {
+    background-color: #EBF2CA;
+    animation-name: visited;
+    animation-duration: 800ms;
+}
+
+@keyframes visited {
+    0% {
+        background-color: #B7DA96;
+    }
+    50% {
+        background-color: #D6EDC0;
+    }
+    100% {
+        background-color: #D6EDC0;
+    }
+}
+
+.path, .path img {
+    padding: 0;
+    margin: auto;
+    max-width: 30px;
+    max-height: 30px;
+    vertical-align: middle;
 }
