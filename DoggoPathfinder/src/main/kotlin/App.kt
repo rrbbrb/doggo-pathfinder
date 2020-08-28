@@ -45,9 +45,9 @@ class App: RComponent<RProps,AppState>() {
             animateVisited(start, count++)
             while(queuing.isNotEmpty()) {
                 var node = queuing.deque()
+                animateVisited(node, count++)
                 val neighbors = getNeighbors(node)
                 if(node == end) {
-                    path += node
                     while(node != start) {
                         path += visited[node]
                         node = visited[node]
@@ -58,22 +58,15 @@ class App: RComponent<RProps,AppState>() {
                 for(neighbor in neighbors) {
                     if(!visited.containsKey(neighbor)) {
                         queuing.enqueue(neighbor)
-                        animateVisited(neighbor, count++)
                         visited[neighbor] = node
                     }
                 }
             }
-            animateWholePath(path, count)
+            path.forEach { node -> animatePath(node, path.indexOf(node), count) }
         }
     }
 
-    private fun animateWholePath(path: List<Node?>, count: Int) {
-        fun animate() = path.forEach { node -> animatePath(node, path.indexOf(node)) }
-        val animate = animate()
-        js("setTimeout(animate, 20 * count)")
-    }
-
-    private fun animatePath(node: Node?, index: Int) {
+    private fun animatePath(node: Node?, index: Int, count: Int) {
         val id = "node-${node?.row}-${node?.col}"
         val start = state.start
         val end = state.end
@@ -85,25 +78,28 @@ class App: RComponent<RProps,AppState>() {
         }
         js("setTimeout( function() {" +
                 "if(node != start && node != end) {document.getElementById(id).appendChild(pathNode)}" +
-                "}, 50 * index)")
+                "}, 80 * index + 20 * count)")
     }
 
-    private fun animateVisited(node: Node, index: Int) {
-        val id = "node-${node.row}-${node.col}"
+    private fun clearPathAnimations() {
+        val className = "path"
+        js("var paths = document.getElementsByClassName(className);" +
+                "while(paths.length > 0) { paths[0].parentNode.removeChild(paths[0]) };")
+    }
+
+    private fun animateVisited(node: Node?, index: Int) {
+        val id = "node-${node?.row}-${node?.col}"
         val start = state.start
         val end = state.end
         val visited = "visited"
-        js("setTimeout( function() {" +
-                "document.getElementById(id).className = visited;" +
-                "}, 20 * index)")
+        js("setTimeout( function() { document.getElementById(id).className = visited; }, 20 * index)")
     }
 
     private fun clearVisitedAnimations() {
         for(node in state.visited.keys) {
             val id = "node-${node.row}-${node.col}"
             val visited = "visited"
-            js("var node = document.getElementById(id);" +
-                    "node.classList.remove(visited);")
+            js("var node = document.getElementById(id); node.classList.remove(visited);")
         }
     }
 
@@ -145,6 +141,7 @@ class App: RComponent<RProps,AppState>() {
 
     private fun clearPath() {
         clearVisitedAnimations()
+        clearPathAnimations()
         setState {
             for(node in path) {
                 path -= node
@@ -258,13 +255,6 @@ class App: RComponent<RProps,AppState>() {
                                                 }
                                             }
                                         }
-//                                        state.path.contains(node) -> {
-//                                            img(classes = "board-element", alt = "path") {
-//                                                attrs {
-//                                                    src = "https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/apple/237/paw-prints_1f43e.png"
-//                                                }
-//                                            }
-//                                        }
                                     }
                                 }
                             }
