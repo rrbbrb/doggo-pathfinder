@@ -1,11 +1,9 @@
 import kotlinx.browser.document
-import kotlinx.css.img
 import kotlinx.html.dom.create
 import kotlinx.html.img
-import kotlinx.html.js.div
+import kotlinx.html.js.*
 import react.*
 import react.dom.*
-import kotlinx.html.js.onClickFunction
 
 const val NUMBER_OF_ROWS = 15
 const val NUMBER_OF_COLS = 25
@@ -17,12 +15,15 @@ external interface AppState: RState {
     var start: Node
     var end: Node
     var startEndInitialized: Boolean
-    var selectingWalls: Boolean
-    var selectingStart: Boolean
-    var selectingEnd: Boolean
     var queuing: Queue
     var visited: HashMap<Node, Node?>
     var path: List<Node?>
+    var wallMouseDown: Boolean
+    var startMouseDown: Boolean
+    var endMouseDown: Boolean
+    var wallTouchDown: Boolean
+    var startTouchDown: Boolean
+    var endTouchDown: Boolean
 }
 
 class App: RComponent<RProps,AppState>() {
@@ -34,6 +35,12 @@ class App: RComponent<RProps,AppState>() {
         queuing = Queue()
         visited = hashMapOf<Node, Node?>()
         path = listOf<Node?>()
+        wallMouseDown = false
+        startMouseDown = false
+        endMouseDown = false
+        wallTouchDown = false
+        startTouchDown = false
+        endTouchDown = false
     }
 
     private fun bfs() {
@@ -49,7 +56,7 @@ class App: RComponent<RProps,AppState>() {
                 val neighbors = getNeighbors(node)
                 if(node == end) {
                     while(node != start) {
-                        path += visited[node]
+                        if(visited[node] != start) path += visited[node]
                         node = visited[node]
                     }
                     path = path.reversed()
@@ -66,40 +73,31 @@ class App: RComponent<RProps,AppState>() {
         }
     }
 
-    private fun animatePath(node: Node?, index: Int, count: Int) {
-        val id = "node-${node?.row}-${node?.col}"
-        val start = state.start
-        val end = state.end
-        val pathNode = document.create.div("path") {
+    private fun animatePath(node: Node?, i: Int, count: Int) {
+        val pathNode = document.getElementById("node-${node?.row}-${node?.col}")
+        val pathTrail = document.create.div("path") {
             img {
                 alt = "path"
                 src = "https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/apple/237/paw-prints_1f43e.png"
             }
         }
-        js("setTimeout( function() {" +
-                "if(node != start && node != end) {document.getElementById(id).appendChild(pathNode)}" +
-                "}, 80 * index + 20 * count)")
+        js("setTimeout(function() { pathNode.appendChild(pathTrail) }, 80 * i + 20 * count)")
     }
 
     private fun clearPathAnimations() {
-        val className = "path"
-        js("var paths = document.getElementsByClassName(className);" +
-                "while(paths.length > 0) { paths[0].parentNode.removeChild(paths[0]) };")
+        val paths = document.getElementsByClassName("path")
+        js("while(paths.length > 0) { paths[0].parentNode.removeChild(paths[0]) };")
     }
 
-    private fun animateVisited(node: Node?, index: Int) {
-        val id = "node-${node?.row}-${node?.col}"
-        val start = state.start
-        val end = state.end
-        val visited = "visited"
-        js("setTimeout( function() { document.getElementById(id).className = visited; }, 20 * index)")
+    private fun animateVisited(node: Node?, i: Int) {
+        val visitedNode = document.getElementById("node-${node?.row}-${node?.col}")
+        js("setTimeout( function() { visitedNode.className = 'visited'; }, 20 * i)")
     }
 
     private fun clearVisitedAnimations() {
         for(node in state.visited.keys) {
-            val id = "node-${node.row}-${node.col}"
-            val visited = "visited"
-            js("var node = document.getElementById(id); node.classList.remove(visited);")
+            val visitedNode = document.getElementById("node-${node.row}-${node.col}")
+            js("visitedNode.classList.remove('visited');")
         }
     }
 
@@ -132,25 +130,16 @@ class App: RComponent<RProps,AppState>() {
     }
 
     private fun clearWalls() {
-        setState {
-            for(wall in walls) {
-                walls -= wall
-            }
-        }
+        setState { walls.forEach { wall -> walls -= wall } }
     }
 
     private fun clearPath() {
         clearVisitedAnimations()
         clearPathAnimations()
         setState {
-            for(node in path) {
-                path -= node
-            }
+            path.forEach { pathNode -> path -= pathNode }
             queuing.removeAll()
             visited.clear()
-            selectingWalls = true
-            selectingStart = false
-            selectingEnd = false
         }
     }
 
@@ -159,40 +148,23 @@ class App: RComponent<RProps,AppState>() {
         clearPath()
     }
 
-    private fun selectingWalls() {
-        setState { selectingWalls = true; selectingStart = false; selectingEnd = false }
-    }
-
-    private fun selectingStart() {
-        setState { selectingWalls = false; selectingStart = true; selectingEnd = false }
-    }
-
-    private fun selectingEnd() {
-        setState { selectingWalls = false; selectingStart = false; selectingEnd = true }
-    }
-
     override fun RBuilder.render() {
         div("grid-container") {
+            attrs {
+                onMouseUpFunction = { state.wallMouseDown = false; state.startMouseDown = false; state.endMouseDown = false }
+                onMouseOverFunction = { if(!state.startEndInitialized) initializeStartEnd() }
+            }
             div("control-panel"){
+                attrs {
+                    onMouseUpFunction = { state.wallMouseDown = false; state.startMouseDown = false; state.endMouseDown = false }
+                }
                 button {
                     attrs { onClickFunction = { resetAll() } }
-                    +"reset"
+                    +"reset all"
                 }
                 button {
-                    attrs { onClickFunction = { clearWalls() } }
-                    +"clear board"
-                }
-                button {
-                    attrs { onClickFunction = { selectingWalls() } }
-                    +"walls"
-                }
-                button {
-                    attrs { onClickFunction = { selectingStart() } }
-                    +"start"
-                }
-                button {
-                    attrs { onClickFunction = { selectingEnd() } }
-                    +"end"
+                    attrs { onClickFunction = { clearPath() } }
+                    +"clear path"
                 }
                 button {
                     attrs { onClickFunction = { bfs() } }
@@ -201,33 +173,89 @@ class App: RComponent<RProps,AppState>() {
             }
             table {
                 tbody {
+                    attrs {
+                        onMouseUpFunction = { state.wallMouseDown = false; state.startMouseDown = false; state.endMouseDown = false }
+                    }
                     for(i in 1..NUMBER_OF_ROWS) {
                         tr {
                             for(j in 1..NUMBER_OF_COLS) {
                                 val node = Node(i,j)
                                 state.nodes.add(node)
-                                td {
+                                td("empty") {
                                     attrs["id"] = "node-${i}-${j}"
                                     attrs {
-                                        onClickFunction = {
-                                            setState {
-                                                when {
-                                                    selectingWalls ->
-                                                        if(!walls.contains(node)) {
-                                                            if(node != start && node != end)
-                                                                walls += node
-                                                        } else {
-                                                            walls -= node
+                                        fun addToWalls(node: Node) {
+                                            if(!state.walls.contains(node)) state.walls += node
+                                        }
+                                        fun clearOldPath() {
+                                            val td = document.getElementById("node-${i}-${j}")
+                                            if(td!!.hasChildNodes()) {
+                                                js("if(td.childNodes[0].className == 'path'){td.removeChild(td.childNodes[0])}")
+                                            }
+                                        }
+                                        onMouseDownFunction = {
+                                            setState { startEndInitialized = true }
+                                            clearOldPath()
+                                            when(node) {
+                                                state.start -> state.startMouseDown = true
+                                                state.end -> state.endMouseDown = true
+                                                else -> {
+                                                    state.wallMouseDown = true
+                                                    addToWalls(node)
+                                                }
+                                            }
+                                        }
+                                        onMouseOverFunction = {
+                                            setState { startEndInitialized = true }
+                                            when {
+                                                state.startMouseDown && !state.walls.contains(node) && node != state.end -> {
+                                                    state.start = node
+                                                    clearOldPath()
+                                                }
+                                                state.endMouseDown && !state.walls.contains(node) && node != state.start -> {
+                                                    state.end = node
+                                                    clearOldPath()
+                                                }
+                                                state.wallMouseDown && node != state.start && node != state.end -> {
+                                                    addToWalls(node)
+                                                    clearOldPath()
+                                                }
+                                            }
+                                        }
+                                        onMouseUpFunction = {
+                                            when {
+                                                state.startMouseDown -> state.startMouseDown = false
+                                                state.endMouseDown -> state.endMouseDown = false
+                                                state.wallMouseDown -> state.wallMouseDown = false
+                                            }
+                                        }
+                                        onTouchStartFunction = {
+                                            if(!state.startEndInitialized) initializeStartEnd()
+                                            setState{
+                                                startEndInitialized = true
+                                                when(node) {
+                                                    start -> startTouchDown = !startTouchDown
+                                                    end -> endTouchDown = !endTouchDown
+                                                    else -> {
+                                                        when {
+                                                            startTouchDown -> {
+                                                                if (!walls.contains(node) && node != end) {
+                                                                    start = node
+                                                                    clearOldPath()
+                                                                }
+                                                                startTouchDown = false
+                                                            }
+                                                            endTouchDown -> {
+                                                                if(!walls.contains(node) && node != start) {
+                                                                    end = node
+                                                                    clearOldPath()
+                                                                }
+                                                                endTouchDown = false
+                                                            }
+                                                            else -> {
+                                                                if (node != start && node != end) addToWalls(node)
+                                                            }
                                                         }
-                                                    selectingStart -> {
-                                                        if(node != end && !walls.contains(node))
-                                                            start = node
-                                                        startEndInitialized = true
-                                                    }
-                                                    selectingEnd -> {
-                                                        if(node != start && !walls.contains(node))
-                                                            end = node
-                                                        startEndInitialized = true
                                                     }
                                                 }
                                             }
@@ -260,7 +288,6 @@ class App: RComponent<RProps,AppState>() {
                             }
                         }
                     }
-                    if(!state.startEndInitialized) initializeStartEnd()
                 }
             }
         }
