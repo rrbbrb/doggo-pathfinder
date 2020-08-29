@@ -164,7 +164,7 @@ class App: RComponent<RProps,AppState>() {
 
     private fun showNoPathDialog(count: Int) {
         val dialog = document.getElementById("no-path-bg")
-        js("setTimeout( function() { dialog.setAttribute('style', 'display: flex;') }, 20 * count)")
+        js("setTimeout( function() { dialog.setAttribute('style', 'display: flex;') }, 20 * count + 200)")
     }
 
     private fun hideDialog(id: String) {
