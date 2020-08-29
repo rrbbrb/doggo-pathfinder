@@ -24,6 +24,7 @@ external interface AppState: RState {
     var wallTouchDown: Boolean
     var startTouchDown: Boolean
     var endTouchDown: Boolean
+    var cancellingWall: Boolean
 }
 
 class App: RComponent<RProps,AppState>() {
@@ -41,11 +42,15 @@ class App: RComponent<RProps,AppState>() {
         wallTouchDown = false
         startTouchDown = false
         endTouchDown = false
+        cancellingWall = false
     }
 
     private fun bfs() {
         clearPath()
+        state.cancellingWall = false
+        disablePointer()
         var count = 1
+        var found = false
         setState {
             queuing.enqueue(start)
             visited[start] = start
@@ -60,6 +65,7 @@ class App: RComponent<RProps,AppState>() {
                         node = visited[node]
                     }
                     path = path.reversed()
+                    found = true
                     break
                 }
                 for(neighbor in neighbors) {
@@ -69,8 +75,21 @@ class App: RComponent<RProps,AppState>() {
                     }
                 }
             }
-            path.forEach { node -> animatePath(node, path.indexOf(node), count) }
+            if(found) path.forEach { node -> animatePath(node, path.indexOf(node), count) }
+            else showNoPathDialog(count)
+            reenablePointer(path.size, count)
         }
+    }
+
+    private fun disablePointer() {
+        document.getElementById("board")?.setAttribute("style", "pointer-events: none;")
+        document.getElementById("control-panel")?.setAttribute("style", "pointer-events: none;")
+    }
+
+    private fun reenablePointer(length: Int, count: Int) {
+        val board = document.getElementById("board")
+        val controlPanel = document.getElementById("control-panel")
+        js("setTimeout(function() {board.removeAttribute('style'); controlPanel.removeAttribute('style');}, 80*length + 20*count)")
     }
 
     private fun animatePath(node: Node?, i: Int, count: Int) {
@@ -78,7 +97,7 @@ class App: RComponent<RProps,AppState>() {
         val pathTrail = document.create.div("path") {
             img {
                 alt = "path"
-                src = "https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/apple/237/paw-prints_1f43e.png"
+                src = "https://raw.githubusercontent.com/rrbbrb/doggo-pathfinder/media/paw-emoji.png"
             }
         }
         js("setTimeout(function() { pathNode.appendChild(pathTrail) }, 80 * i + 20 * count)")
@@ -102,35 +121,18 @@ class App: RComponent<RProps,AppState>() {
     }
 
     private fun getNeighbors(node: Node?): List<Node> {
-        var neighbors = listOfNotNull<Node>()
-        val i = state.nodes.indexOf(node)
-        val up = i - NUMBER_OF_COLS
-        val down = i + NUMBER_OF_COLS
-        val left = i - 1
-        val right = i + 1
-        fun isWall(node: Node): Boolean = state.walls.contains(node)
-        fun isStart(node: Node): Boolean = node == state.start
-        fun withinRange(index: Int): Boolean = index in 0 until TOTAL_CELLS
-        fun leftEdge(): Boolean = i % NUMBER_OF_COLS == 0
-        fun rightEdge(): Boolean = i % NUMBER_OF_COLS == NUMBER_OF_COLS-1
-        fun notVisited(node: Node): Boolean = !state.visited.containsKey(node)
-        fun qualify(index: Int): Boolean = withinRange(index) && !isWall(state.nodes[index]) && !isStart(state.nodes[index]) && notVisited(state.nodes[index])
-
-        if(qualify(right) && !rightEdge()) neighbors += state.nodes[right]
-        if(qualify(down)) neighbors += state.nodes[down]
-        if(qualify(left) && !leftEdge()) neighbors += state.nodes[left]
-        if(qualify(up)) neighbors += state.nodes[up]
-
+        val row = node!!.row
+        val col = node.col
+        val left = if(col-1 >= 1) state.nodes[state.nodes.indexOf(Node(row, col-1))] else Node(0,0)
+        val right = if(col+1 <= NUMBER_OF_COLS) state.nodes[state.nodes.indexOf(Node(row, col+1))] else Node(0, 0)
+        val up = if(row-1 >= 1) state.nodes[state.nodes.indexOf(Node(row-1, col))] else Node(0, 0)
+        val down = if(row+1 <= NUMBER_OF_ROWS) state.nodes[state.nodes.indexOf(Node(row+1, col))] else Node(0, 0)
+        var neighbors = listOf<Node>(left, right, up, down)
+        neighbors.forEach { neighbor ->
+            if(neighbor.row == 0 || neighbor == state.start || state.walls.contains(neighbor) || state.visited.containsKey(neighbor))
+                neighbors -= neighbor
+        }
         return neighbors
-    }
-
-    private fun initializeStartEnd() {
-        state.start = state.nodes[180]
-        state.end = state.nodes[194]
-    }
-
-    private fun clearWalls() {
-        setState { walls.forEach { wall -> walls -= wall } }
     }
 
     private fun clearPath() {
@@ -144,34 +146,85 @@ class App: RComponent<RProps,AppState>() {
     }
 
     private fun resetAll() {
-        clearWalls()
+        setState { walls.forEach { wall -> walls -= wall } }
         clearPath()
+    }
+
+    private fun cancellingWall() {
+        setState {
+            wallMouseDown = false
+            startMouseDown = false
+            endMouseDown = false
+            wallTouchDown = false
+            startTouchDown = false
+            endTouchDown = false
+            cancellingWall = !cancellingWall
+        }
+    }
+
+    private fun showNoPathDialog(count: Int) {
+        val dialog = document.getElementById("no-path-bg")
+        js("setTimeout( function() { dialog.setAttribute('style', 'display: flex;') }, 20 * count)")
+    }
+
+    private fun hideDialog(id: String) {
+        document.getElementById(id)?.setAttribute("style", "display: none;")
     }
 
     override fun RBuilder.render() {
         div("grid-container") {
             attrs {
                 onMouseUpFunction = { state.wallMouseDown = false; state.startMouseDown = false; state.endMouseDown = false }
-                onMouseOverFunction = { if(!state.startEndInitialized) initializeStartEnd() }
             }
-            div("control-panel"){
+            div("logo") {
+                img {
+                    attrs {
+                        src = "https://raw.githubusercontent.com/rrbbrb/doggo-pathfinder/media/logo.png"
+                    }
+                }
+            }
+            div{
+                attrs["id"] = "control-panel"
                 attrs {
                     onMouseUpFunction = { state.wallMouseDown = false; state.startMouseDown = false; state.endMouseDown = false }
                 }
                 button {
                     attrs { onClickFunction = { resetAll() } }
-                    +"reset all"
+                    +"reset"
                 }
                 button {
                     attrs { onClickFunction = { clearPath() } }
                     +"clear path"
                 }
                 button {
+                    attrs { onClickFunction = { cancellingWall() } }
+                    if(!state.cancellingWall) +"remove a tree" else +"add a tree"
+                }
+                button {
                     attrs { onClickFunction = { bfs() } }
-                    +"BFS"
+                    +"breadth-first search"
+                }
+            }
+            div {
+                attrs["id"] = "no-path-bg"
+                div("no-path") {
+                    img {
+                        attrs {
+                            alt = "dog crying"
+                            src = "https://raw.githubusercontent.com/rrbbrb/doggo-pathfinder/media/dog-cry.png"
+                        }
+                    }
+                    p {
+                        +"there is no path!"
+                    }
+                    button {
+                        attrs { onClickFunction = { hideDialog("no-path-bg") } }
+                        +"try again"
+                    }
                 }
             }
             table {
+                attrs["id"] = "board"
                 tbody {
                     attrs {
                         onMouseUpFunction = { state.wallMouseDown = false; state.startMouseDown = false; state.endMouseDown = false }
@@ -181,11 +234,20 @@ class App: RComponent<RProps,AppState>() {
                             for(j in 1..NUMBER_OF_COLS) {
                                 val node = Node(i,j)
                                 state.nodes.add(node)
-                                td("empty") {
+                                td {
                                     attrs["id"] = "node-${i}-${j}"
+                                    if(!state.startEndInitialized && node.row == 8) {
+                                        when(node.col) {
+                                            6 -> state.start = node
+                                            20 -> state.end = node
+                                        }
+                                    }
                                     attrs {
                                         fun addToWalls(node: Node) {
                                             if(!state.walls.contains(node)) state.walls += node
+                                        }
+                                        fun removeFromWalls(node: Node) {
+                                            if(state.walls.contains(node)) state.walls -= node
                                         }
                                         fun clearOldPath() {
                                             val td = document.getElementById("node-${i}-${j}")
@@ -193,16 +255,21 @@ class App: RComponent<RProps,AppState>() {
                                                 js("if(td.childNodes[0].className == 'path'){td.removeChild(td.childNodes[0])}")
                                             }
                                         }
+
                                         onMouseDownFunction = {
                                             setState { startEndInitialized = true }
-                                            clearOldPath()
-                                            when(node) {
-                                                state.start -> state.startMouseDown = true
-                                                state.end -> state.endMouseDown = true
-                                                else -> {
-                                                    state.wallMouseDown = true
-                                                    addToWalls(node)
+                                            if(!state.cancellingWall) {
+                                                clearOldPath()
+                                                when(node) {
+                                                    state.start -> state.startMouseDown = true
+                                                    state.end -> state.endMouseDown = true
+                                                    else -> {
+                                                        state.wallMouseDown = true
+                                                        addToWalls(node)
+                                                    }
                                                 }
+                                            } else {
+                                                if(node != state.start && node != state.end) removeFromWalls(node)
                                             }
                                         }
                                         onMouseOverFunction = {
@@ -230,33 +297,36 @@ class App: RComponent<RProps,AppState>() {
                                             }
                                         }
                                         onTouchStartFunction = {
-                                            if(!state.startEndInitialized) initializeStartEnd()
                                             setState{
                                                 startEndInitialized = true
-                                                when(node) {
-                                                    start -> startTouchDown = !startTouchDown
-                                                    end -> endTouchDown = !endTouchDown
-                                                    else -> {
-                                                        when {
-                                                            startTouchDown -> {
-                                                                if (!walls.contains(node) && node != end) {
-                                                                    start = node
-                                                                    clearOldPath()
+                                                if(!state.cancellingWall) {
+                                                    when (node) {
+                                                        start -> startTouchDown = !startTouchDown
+                                                        end -> endTouchDown = !endTouchDown
+                                                        else -> {
+                                                            when {
+                                                                startTouchDown -> {
+                                                                    if (!walls.contains(node) && node != end) {
+                                                                        start = node
+                                                                        clearOldPath()
+                                                                    }
+                                                                    startTouchDown = false
                                                                 }
-                                                                startTouchDown = false
-                                                            }
-                                                            endTouchDown -> {
-                                                                if(!walls.contains(node) && node != start) {
-                                                                    end = node
-                                                                    clearOldPath()
+                                                                endTouchDown -> {
+                                                                    if (!walls.contains(node) && node != start) {
+                                                                        end = node
+                                                                        clearOldPath()
+                                                                    }
+                                                                    endTouchDown = false
                                                                 }
-                                                                endTouchDown = false
-                                                            }
-                                                            else -> {
-                                                                if (node != start && node != end) addToWalls(node)
+                                                                else -> {
+                                                                    if (node != start && node != end) addToWalls(node)
+                                                                }
                                                             }
                                                         }
                                                     }
+                                                } else {
+                                                    if(node != start && node != end) removeFromWalls(node)
                                                 }
                                             }
                                         }
@@ -265,21 +335,21 @@ class App: RComponent<RProps,AppState>() {
                                         state.walls.contains(node) -> {
                                             img(classes = "board-element", alt = "tree") {
                                                 attrs {
-                                                    src = "https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/microsoft/209/deciduous-tree_1f333.png"
+                                                    src = "https://raw.githubusercontent.com/rrbbrb/doggo-pathfinder/media/tree-emoji.png"
                                                 }
                                             }
                                         }
                                         state.start == node -> {
                                             img(classes = "board-element", alt = "dog") {
                                                 attrs {
-                                                    src = "https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/microsoft/209/dog-face_1f436.png"
+                                                    src = "https://raw.githubusercontent.com/rrbbrb/doggo-pathfinder/media/dog-emoji.png"
                                                 }
                                             }
                                         }
                                         state.end == node -> {
                                             img(classes = "board-element", alt = "ball") {
                                                 attrs {
-                                                    src = "https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/microsoft/209/baseball_26be.png"
+                                                    src = "https://raw.githubusercontent.com/rrbbrb/doggo-pathfinder/media/baseball-emoji.png"
                                                 }
                                             }
                                         }
