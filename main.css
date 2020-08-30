@@ -1,0 +1,149 @@
+body {
+    background-color: #FFF;
+    font-family: "Segoe UI", Helvetica, Verdana, Monospace, Arial;
+    text-transform: uppercase;
+    font-weight: 700;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+body::-webkit-scrollbar {
+  display: none;
+}
+
+.grid-container {
+    margin: auto;
+}
+
+.logo {
+    width: 100%;
+    text-align: center;
+    vertical-align: middle;
+    margin: 0;
+    padding: 0;
+}
+
+.logo img {
+    max-width: 100%;
+    width: 44rem;
+}
+
+#control-panel {
+    text-align: center;
+    margin: 0;
+}
+
+button {
+    background-color: #E85902;
+    border: 2.5px solid #000;
+    border-radius: 5px;
+    padding: 0.475rem 1rem;
+    margin: 0.3rem 0.3rem 0.675rem 0.3rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-weight: 700;
+    font-size: 1rem;
+    font-family: "Segoe UI", Helvetica, Verdana, Monospace, Arial;
+    color: #FFF;
+}
+
+button:focus, button:active {
+    outline: none;
+}
+
+button:hover {
+    background-color: #FC6D1E;
+    transform: scale(1.08);
+}
+
+button:active {
+    transform: scale(0.95);
+}
+
+table {
+    border-spacing: 0px;
+    border: 3px solid #000;
+    margin-left: auto;
+    margin-right:auto;
+}
+
+td {
+    background-color: #FAC753;
+    border: 0.8px solid #000;
+    height: 38px;
+    width: 38px;
+    padding: 0px;
+    cursor: pointer;
+    text-align: center;
+    vertical-align: middle;
+}
+
+td:hover {
+    background-color: #12DF01;
+}
+
+td img {
+    user-drag: none;
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+}
+
+.board-element, .path, .path img {
+    vertical-align: middle;
+    width: 100%;
+    max-width: 30px;
+    padding: 0;
+    margin: auto;
+}
+
+.visited {
+    background-color: #83CF35;
+    animation-name: visited;
+    animation-duration: 800ms;
+}
+
+@keyframes visited {
+    0% {
+        background-color: #497E16;
+    }
+    50% {
+        background-color: #5FA21D;
+    }
+    100% {
+        background-color: #6FBB21;
+    }
+}
+
+#no-path-bg {
+	background-color: rgb(0, 0, 0, 0.15);
+	width: 100%;
+	height: 100%;
+	position: absolute;
+	top: 0;
+	display: none;
+	justify-content: center;
+	align-items: center;
+}
+
+.no-path {
+    border: 3.5px solid #000;
+    background-color: white;
+    text-align: center;
+    padding: 1.125rem 2.5rem;
+    position: relative;
+    border-radius: 10px;
+}
+
+.no-path img {
+    max-width: 100px;
+    margin-top: 0.625rem;
+}
