@@ -1,5 +1,8 @@
+package classes
+
+import Node
+
 external interface IQueue<T> {
-    var queue: List<T>
     fun getQueue(): List<T>
     fun deque(): T?
     fun enqueue(t: T)
@@ -11,7 +14,7 @@ external interface IQueue<T> {
     fun removeAll()
 }
 
-data class Queue(override var queue: List<Node> = mutableListOf<Node>()): IQueue<Node> {
+data class Queue(var queue: List<Node> = mutableListOf<Node>()): IQueue<Node> {
 
     override fun getQueue(): List<Node> = this.queue
 
@@ -40,7 +43,6 @@ data class Queue(override var queue: List<Node> = mutableListOf<Node>()): IQueue
     override fun isNotEmpty(): Boolean = this.queue.isNotEmpty()
 
     override fun removeAll() {
-        while(this.isNotEmpty())
-            this.deque()
+        while(this.isNotEmpty()) this.deque()
     }
 }

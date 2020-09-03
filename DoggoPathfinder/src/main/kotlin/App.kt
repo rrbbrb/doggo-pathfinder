@@ -1,3 +1,6 @@
+import classes.PriorityQueue
+import classes.Queue
+import classes.Stack
 import kotlinx.browser.document
 import kotlinx.html.dom.create
 import kotlinx.html.img
@@ -15,7 +18,7 @@ external interface AppState: RState {
     var start: Node
     var end: Node
     var startEndInitialized: Boolean
-    var queuing: Queue
+    var queue: Queue
     var stack: Stack
     var parentVisited: HashMap<Node, Node?>
     var path: List<Node?>
@@ -26,7 +29,9 @@ external interface AppState: RState {
     var startTouchDown: Boolean
     var endTouchDown: Boolean
     var cancellingWall: Boolean
-    var visited: List<Node>
+    var visited: Set<Node>
+    var minPQ: PriorityQueue
+    var distances: HashMap<Node, Int>
 }
 
 class App: RComponent<RProps,AppState>() {
@@ -35,7 +40,7 @@ class App: RComponent<RProps,AppState>() {
         nodes = arrayListOf<Node>()
         walls = mutableSetOf<Node>()
         startEndInitialized = false
-        queuing = Queue()
+        queue = Queue()
         stack = Stack()
         parentVisited = hashMapOf<Node, Node?>()
         path = listOf<Node?>()
@@ -46,7 +51,9 @@ class App: RComponent<RProps,AppState>() {
         startTouchDown = false
         endTouchDown = false
         cancellingWall = false
-        visited = listOf<Node>()
+        visited = setOf<Node>()
+        minPQ = PriorityQueue()
+        distances = hashMapOf<Node, Int>()
     }
 
     private fun bfs() {
@@ -56,11 +63,10 @@ class App: RComponent<RProps,AppState>() {
         var count = 1
         var hasPath = false
         setState {
-            queuing.enqueue(start)
-            animateVisited(start, count++)
+            queue.enqueue(start)
             parentVisited[start] = start
-            while(queuing.isNotEmpty()) {
-                var node = queuing.deque()
+            while(queue.isNotEmpty()) {
+                var node = queue.deque()
                 animateVisited(node, count++)
                 val neighbors = getNeighbors(node)
                 if(node == end) {
@@ -74,7 +80,7 @@ class App: RComponent<RProps,AppState>() {
                 }
                 for(neighbor in neighbors) {
                     if(!parentVisited.containsKey(neighbor)) {
-                        queuing.enqueue(neighbor)
+                        queue.enqueue(neighbor)
                         parentVisited[neighbor] = node
                     }
                 }
@@ -93,9 +99,7 @@ class App: RComponent<RProps,AppState>() {
         var hasPath = false
         setState {
             stack.push(start)
-            animateVisited(start, count++)
             parentVisited[start] = start
-            visited += start
             while(stack.isNotEmpty()) {
                 var node = stack.pop()
                 visited += node!!
@@ -118,6 +122,51 @@ class App: RComponent<RProps,AppState>() {
                 }
             }
             val speed = 40
+            if(hasPath) path.forEach { node -> animatePath(node, path.indexOf(node), count, speed) }
+            else showNoPathDialog(count)
+            reenablePointer(path.size, count, speed)
+        }
+    }
+
+    private fun dijkstra() {
+        clearPath()
+        state.cancellingWall = false
+        disablePointer()
+        var count = 1
+        var hasPath = false
+        setState {
+            distances[start] = 0
+            minPQ.enqueue(start, 0)
+            nodes.forEach { node -> if(node != start) distances[node] = Int.MAX_VALUE }
+            while(minPQ.isNotEmpty()) {
+                var minNode = minPQ.deque()
+                visited += minNode!!
+                animateVisited(minNode, count++)
+                if(minNode == end) {
+                    while(minNode != start) {
+                        if(parentVisited[minNode] != start) path += parentVisited[minNode]
+                        minNode = parentVisited[minNode]
+                    }
+                    path = path.reversed()
+                    hasPath = true
+                    break
+                }
+                val neighbors = getNeighbors(minNode)
+                for(neighbor in neighbors) {
+                    if(!visited.contains(neighbor)) {
+                        val altPath = distances[minNode]?.plus(1)
+                        if (altPath != null) {
+                            if(altPath < distances[neighbor]!!) {
+                                distances[neighbor] = altPath
+                                parentVisited[neighbor] = minNode
+                                if(minPQ.contains(neighbor)) minPQ.updatePriority(neighbor, altPath)
+                                else minPQ.enqueue(neighbor, altPath)
+                            }
+                        }
+                    }
+                }
+            }
+            val speed = 80
             if(hasPath) path.forEach { node -> animatePath(node, path.indexOf(node), count, speed) }
             else showNoPathDialog(count)
             reenablePointer(path.size, count, speed)
@@ -157,7 +206,8 @@ class App: RComponent<RProps,AppState>() {
     }
 
     private fun clearVisitedAnimations() {
-        for(node in state.parentVisited.keys) {
+        val allVisited = state.parentVisited.keys.toSet() + state.visited
+        for(node in allVisited) {
             val visitedNode = document.getElementById("node-${node.row}-${node.col}")
             js("visitedNode.classList.remove('visited');")
         }
@@ -183,10 +233,12 @@ class App: RComponent<RProps,AppState>() {
         clearPathAnimations()
         setState {
             path.forEach { pathNode -> path -= pathNode }
-            queuing.removeAll()
+            queue.removeAll()
             stack.removeAll()
             parentVisited.clear()
             visited.forEach { visitedNode -> visited -= visitedNode }
+            minPQ.removeAll()
+            distances.clear()
         }
     }
 
@@ -252,6 +304,10 @@ class App: RComponent<RProps,AppState>() {
                 button {
                     attrs { onClickFunction = { dfs() } }
                     +"depth-first search"
+                }
+                button {
+                    attrs { onClickFunction = { dijkstra() } }
+                    +"dijsktra"
                 }
             }
             div {

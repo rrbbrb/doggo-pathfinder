@@ -1,3 +1,7 @@
+package classes
+
+import Node
+
 external interface IStack<T> {
     var stack: List<T>
     fun getStack(): List<T>
@@ -40,7 +44,6 @@ data class Stack(override var stack: List<Node> = mutableListOf<Node>()): IStack
     override fun isNotEmpty(): Boolean = this.stack.isNotEmpty()
 
     override fun removeAll() {
-        while(this.isNotEmpty())
-            this.pop()
+        while(this.isNotEmpty()) this.pop()
     }
 }
