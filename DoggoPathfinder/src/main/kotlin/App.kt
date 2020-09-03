@@ -16,7 +16,8 @@ external interface AppState: RState {
     var end: Node
     var startEndInitialized: Boolean
     var queuing: Queue
-    var visited: HashMap<Node, Node?>
+    var stack: Stack
+    var parentVisited: HashMap<Node, Node?>
     var path: List<Node?>
     var wallMouseDown: Boolean
     var startMouseDown: Boolean
@@ -25,6 +26,7 @@ external interface AppState: RState {
     var startTouchDown: Boolean
     var endTouchDown: Boolean
     var cancellingWall: Boolean
+    var visited: List<Node>
 }
 
 class App: RComponent<RProps,AppState>() {
@@ -34,7 +36,8 @@ class App: RComponent<RProps,AppState>() {
         walls = mutableSetOf<Node>()
         startEndInitialized = false
         queuing = Queue()
-        visited = hashMapOf<Node, Node?>()
+        stack = Stack()
+        parentVisited = hashMapOf<Node, Node?>()
         path = listOf<Node?>()
         wallMouseDown = false
         startMouseDown = false
@@ -43,6 +46,7 @@ class App: RComponent<RProps,AppState>() {
         startTouchDown = false
         endTouchDown = false
         cancellingWall = false
+        visited = listOf<Node>()
     }
 
     private fun bfs() {
@@ -50,34 +54,73 @@ class App: RComponent<RProps,AppState>() {
         state.cancellingWall = false
         disablePointer()
         var count = 1
-        var found = false
+        var hasPath = false
         setState {
             queuing.enqueue(start)
-            visited[start] = start
             animateVisited(start, count++)
+            parentVisited[start] = start
             while(queuing.isNotEmpty()) {
                 var node = queuing.deque()
                 animateVisited(node, count++)
                 val neighbors = getNeighbors(node)
                 if(node == end) {
                     while(node != start) {
-                        if(visited[node] != start) path += visited[node]
-                        node = visited[node]
+                        if(parentVisited[node] != start) path += parentVisited[node]
+                        node = parentVisited[node]
                     }
                     path = path.reversed()
-                    found = true
+                    hasPath = true
                     break
                 }
                 for(neighbor in neighbors) {
-                    if(!visited.containsKey(neighbor)) {
+                    if(!parentVisited.containsKey(neighbor)) {
                         queuing.enqueue(neighbor)
-                        visited[neighbor] = node
+                        parentVisited[neighbor] = node
                     }
                 }
             }
-            if(found) path.forEach { node -> animatePath(node, path.indexOf(node), count) }
+            val speed = 80
+            if(hasPath) path.forEach { node -> animatePath(node, path.indexOf(node), count, speed) }
             else showNoPathDialog(count)
-            reenablePointer(path.size, count)
+            reenablePointer(path.size, count, speed)
+        }
+    }
+    private fun dfs() {
+        clearPath()
+        state.cancellingWall = false
+        disablePointer()
+        var count = 1
+        var hasPath = false
+        setState {
+            stack.push(start)
+            animateVisited(start, count++)
+            parentVisited[start] = start
+            visited += start
+            while(stack.isNotEmpty()) {
+                var node = stack.pop()
+                visited += node!!
+                animateVisited(node, count++)
+                if(node == end) {
+                    while(node != start) {
+                        if(parentVisited[node] != start) path += parentVisited[node]
+                        node = parentVisited[node]
+                    }
+                    path = path.reversed()
+                    hasPath = true
+                    break
+                }
+                val neighbors = getNeighbors(node).asReversed()
+                for(neighbor in neighbors) {
+                    if(!visited.contains(neighbor)) {
+                        stack.push(neighbor)
+                        parentVisited[neighbor] = node
+                    }
+                }
+            }
+            val speed = 40
+            if(hasPath) path.forEach { node -> animatePath(node, path.indexOf(node), count, speed) }
+            else showNoPathDialog(count)
+            reenablePointer(path.size, count, speed)
         }
     }
 
@@ -86,13 +129,13 @@ class App: RComponent<RProps,AppState>() {
         document.getElementById("control-panel")?.setAttribute("style", "pointer-events: none;")
     }
 
-    private fun reenablePointer(length: Int, count: Int) {
+    private fun reenablePointer(length: Int, count: Int, speed: Int) {
         val board = document.getElementById("board")
         val controlPanel = document.getElementById("control-panel")
-        js("setTimeout(function() {board.removeAttribute('style'); controlPanel.removeAttribute('style');}, 80*length + 20*count)")
+        js("setTimeout(function() {board.removeAttribute('style'); controlPanel.removeAttribute('style');}, speed*length + 20*count)")
     }
 
-    private fun animatePath(node: Node?, i: Int, count: Int) {
+    private fun animatePath(node: Node?, i: Int, count: Int, speed: Int) {
         val pathNode = document.getElementById("node-${node?.row}-${node?.col}")
         val pathTrail = document.create.div("path") {
             img {
@@ -100,7 +143,7 @@ class App: RComponent<RProps,AppState>() {
                 src = "https://raw.githubusercontent.com/rrbbrb/doggo-pathfinder/media/paw-emoji.png"
             }
         }
-        js("setTimeout(function() { pathNode.appendChild(pathTrail) }, 80 * i + 20 * count)")
+        js("setTimeout(function() { pathNode.appendChild(pathTrail) }, speed * i + 20 * count)")
     }
 
     private fun clearPathAnimations() {
@@ -114,7 +157,7 @@ class App: RComponent<RProps,AppState>() {
     }
 
     private fun clearVisitedAnimations() {
-        for(node in state.visited.keys) {
+        for(node in state.parentVisited.keys) {
             val visitedNode = document.getElementById("node-${node.row}-${node.col}")
             js("visitedNode.classList.remove('visited');")
         }
@@ -127,9 +170,9 @@ class App: RComponent<RProps,AppState>() {
         val right = if(col+1 <= NUMBER_OF_COLS) state.nodes[state.nodes.indexOf(Node(row, col+1))] else Node(0, 0)
         val up = if(row-1 >= 1) state.nodes[state.nodes.indexOf(Node(row-1, col))] else Node(0, 0)
         val down = if(row+1 <= NUMBER_OF_ROWS) state.nodes[state.nodes.indexOf(Node(row+1, col))] else Node(0, 0)
-        var neighbors = listOf<Node>(left, right, up, down)
+        var neighbors = listOf<Node>(up, right, down, left)
         neighbors.forEach { neighbor ->
-            if(neighbor.row == 0 || neighbor == state.start || state.walls.contains(neighbor) || state.visited.containsKey(neighbor))
+            if(neighbor.row == 0 || neighbor == state.start || state.walls.contains(neighbor))
                 neighbors -= neighbor
         }
         return neighbors
@@ -141,7 +184,9 @@ class App: RComponent<RProps,AppState>() {
         setState {
             path.forEach { pathNode -> path -= pathNode }
             queuing.removeAll()
-            visited.clear()
+            stack.removeAll()
+            parentVisited.clear()
+            visited.forEach { visitedNode -> visited -= visitedNode }
         }
     }
 
@@ -203,6 +248,10 @@ class App: RComponent<RProps,AppState>() {
                 button {
                     attrs { onClickFunction = { bfs() } }
                     +"breadth-first search"
+                }
+                button {
+                    attrs { onClickFunction = { dfs() } }
+                    +"depth-first search"
                 }
             }
             div {

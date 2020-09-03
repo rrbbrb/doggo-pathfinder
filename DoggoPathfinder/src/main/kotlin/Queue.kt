@@ -16,12 +16,11 @@ data class Queue(override var queue: List<Node> = mutableListOf<Node>()): IQueue
     override fun getQueue(): List<Node> = this.queue
 
     override fun deque(): Node? {
+        val node = this.queue.firstOrNull()
         if(this.queue.isNotEmpty()) {
-            val node = this.queue[0]
             this.queue -= this.queue[0]
-            return node
         }
-        return null
+        return node
     }
 
     override fun enqueue(t: Node) {
@@ -32,11 +31,7 @@ data class Queue(override var queue: List<Node> = mutableListOf<Node>()): IQueue
         if(this.contains(t)) this.queue -= t
     }
 
-    override fun peek(): Node? {
-        if(this.queue.isNotEmpty())
-            return this.queue[0]
-        return null
-    }
+    override fun peek(): Node? = this.queue.firstOrNull()
 
     override fun contains(t: Node): Boolean = this.queue.contains(t)
 
