@@ -21,9 +21,7 @@ data class Stack(override var stack: List<Node> = mutableListOf<Node>()): IStack
 
     override fun pop(): Node? {
         val node = this.stack.lastOrNull()
-        if(this.stack.isNotEmpty()) {
-            this.stack -= this.stack.last()
-        }
+        if(this.stack.isNotEmpty()) node?.let { this.poll(it) }
         return node
     }
 

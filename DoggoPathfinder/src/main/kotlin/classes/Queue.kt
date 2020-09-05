@@ -3,7 +3,6 @@ package classes
 import Node
 
 external interface IQueue<T> {
-    fun getQueue(): List<T>
     fun deque(): T?
     fun enqueue(t: T)
     fun poll(t: T)
@@ -16,13 +15,11 @@ external interface IQueue<T> {
 
 data class Queue(var queue: List<Node> = mutableListOf<Node>()): IQueue<Node> {
 
-    override fun getQueue(): List<Node> = this.queue
+    fun getQueue(): List<Node> = this.queue
 
     override fun deque(): Node? {
         val node = this.queue.firstOrNull()
-        if(this.queue.isNotEmpty()) {
-            this.queue -= this.queue[0]
-        }
+        if(this.queue.isNotEmpty()) node?.let { this.poll(it) }
         return node
     }
 

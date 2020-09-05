@@ -7,6 +7,7 @@ import kotlinx.html.img
 import kotlinx.html.js.*
 import react.*
 import react.dom.*
+import kotlin.math.abs
 
 const val NUMBER_OF_ROWS = 15
 const val NUMBER_OF_COLS = 25
@@ -31,7 +32,7 @@ external interface AppState: RState {
     var cancellingWall: Boolean
     var visited: Set<Node>
     var minPQ: PriorityQueue
-    var distances: HashMap<Node, Int>
+    var costs: HashMap<Node, Int>
 }
 
 class App: RComponent<RProps,AppState>() {
@@ -53,7 +54,7 @@ class App: RComponent<RProps,AppState>() {
         cancellingWall = false
         visited = setOf<Node>()
         minPQ = PriorityQueue()
-        distances = hashMapOf<Node, Int>()
+        costs = hashMapOf<Node, Int>()
     }
 
     private fun bfs() {
@@ -135,9 +136,9 @@ class App: RComponent<RProps,AppState>() {
         var count = 1
         var hasPath = false
         setState {
-            distances[start] = 0
+            costs[start] = 0
             minPQ.enqueue(start, 0)
-            nodes.forEach { node -> if(node != start) distances[node] = Int.MAX_VALUE }
+            nodes.forEach { node -> if(node != start) costs[node] = Int.MAX_VALUE }
             while(minPQ.isNotEmpty()) {
                 var minNode = minPQ.deque()
                 visited += minNode!!
@@ -154,17 +155,68 @@ class App: RComponent<RProps,AppState>() {
                 val neighbors = getNeighbors(minNode)
                 for(neighbor in neighbors) {
                     if(!visited.contains(neighbor)) {
-                        val altPath = distances[minNode]?.plus(1)
+                        val altPath = costs[minNode]?.plus(1)
                         if (altPath != null) {
-                            if(altPath < distances[neighbor]!!) {
-                                distances[neighbor] = altPath
+                            if(altPath < costs[neighbor]!!) {
+                                costs[neighbor] = altPath
                                 parentVisited[neighbor] = minNode
-                                if(minPQ.contains(neighbor)) minPQ.updatePriority(neighbor, altPath)
-                                else minPQ.enqueue(neighbor, altPath)
+                                minPQ.enqueue(neighbor, altPath)
                             }
                         }
                     }
                 }
+            }
+            val speed = 80
+            if(hasPath) path.forEach { node -> animatePath(node, path.indexOf(node), count, speed) }
+            else showNoPathDialog(count)
+            reenablePointer(path.size, count, speed)
+        }
+    }
+
+    private fun aStar() {
+        clearPath()
+        state.cancellingWall = false
+        disablePointer()
+        var count = 1
+        var hasPath = false
+        fun manhattan(node: Node, end: Node) = abs(node.row - end.row) + abs(node.col - end.col)
+        setState {
+            val fOfStart = 0 + manhattan(start, end)
+            minPQ.enqueue(start, fOfStart)
+            parentVisited[start] = start
+            while(minPQ.isNotEmpty()) {
+                val node = minPQ.peek()!!
+                val fOfNode = minPQ.getPriority(node)!!
+                val gOfNode = fOfNode - manhattan(node, end)
+                minPQ.deque()
+                costs[node] = fOfNode
+                animateVisited(node, count++)
+                val neighbors = getNeighbors(node)
+                for(neighbor in neighbors) {
+                    animateVisited(neighbor, count++)
+                    if(neighbor == end) {
+                        parentVisited[neighbor] = node
+                        var pathNode = neighbor
+                        while(pathNode != start) {
+                            if(parentVisited[pathNode] != start) path += parentVisited[pathNode]
+                            pathNode = parentVisited[pathNode]!!
+                        }
+                        path = path.reversed()
+                        hasPath = true
+                        break
+                    }
+                    val fOfNeighbor = (gOfNode + 1) + manhattan(neighbor, end)
+                    if(minPQ.contains(neighbor) && minPQ.getPriority(neighbor)!! <= fOfNeighbor) {
+                        continue
+                    }
+                    if(costs.containsKey(neighbor) && costs[neighbor]!! <= fOfNeighbor) {
+                        continue
+                    } else {
+                        minPQ.enqueue(neighbor, fOfNeighbor)
+                        parentVisited[neighbor] = node
+                    }
+                }
+                if(hasPath) break
             }
             val speed = 80
             if(hasPath) path.forEach { node -> animatePath(node, path.indexOf(node), count, speed) }
@@ -238,7 +290,7 @@ class App: RComponent<RProps,AppState>() {
             parentVisited.clear()
             visited.forEach { visitedNode -> visited -= visitedNode }
             minPQ.removeAll()
-            distances.clear()
+            costs.clear()
         }
     }
 
@@ -308,6 +360,10 @@ class App: RComponent<RProps,AppState>() {
                 button {
                     attrs { onClickFunction = { dijkstra() } }
                     +"dijsktra"
+                }
+                button {
+                    attrs { onClickFunction = { aStar() } }
+                    +"a*"
                 }
             }
             div {
