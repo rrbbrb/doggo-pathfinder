@@ -3,6 +3,7 @@ body {
     font-family: "Segoe UI", Helvetica, Verdana, Monospace, Arial;
     text-transform: uppercase;
     font-weight: 700;
+    overscroll-behavior: none;
     -ms-overflow-style: none;
     scrollbar-width: none;
     -webkit-touch-callout: none;
@@ -36,19 +37,19 @@ body::-webkit-scrollbar {
 
 #control-panel {
     text-align: center;
-    margin: 0;
+    margin: 0.125rem 0;
 }
 
 button {
     background-color: #E85902;
     border: 2.5px solid #000;
     border-radius: 5px;
-    padding: 0.475rem 1rem;
+    padding: 0.35rem 0.825rem;
     margin: 0.3rem 0.3rem 0.675rem 0.3rem;
     cursor: pointer;
     text-transform: uppercase;
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 0.85rem;
     font-family: "Segoe UI", Helvetica, Verdana, Monospace, Arial;
     color: #FFF;
 }
@@ -146,4 +147,57 @@ td img {
 .no-path img {
     max-width: 100px;
     margin-top: 0.625rem;
+}
+
+.algorithms {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown {
+    background-color: #E85902;
+    border-radius: 5px;
+    display: none;
+    position: absolute;
+    width: 13.5rem;
+    z-index: 1;
+    text-align: left;
+    padding: 0.25rem 0;
+    transform: translate(0.25rem, -0.425rem);
+}
+
+.dropdown p {
+    padding: 0.25rem 0.75rem;
+    margin: 0;
+    font-size: 0.825rem;
+    cursor: pointer;
+    color: #FFF;
+}
+
+.dropdown p:hover {
+    background-color: #FC6D1E;
+}
+
+.algorithms:hover .dropdown {
+    display: block;
+}
+
+i {
+    padding: 0;
+    margin: 0;
+}
+
+i img {
+    max-width: 1.5rem;
+    vertical-align: middle;
+    padding: 0;
+    margin: 0;
+    margin-left: 0.45rem;
+    display: inline-block;
+    transform: translateY(-2px);
+}
+
+.algorithms img {
+    max-width: 0.75rem;
+    margin-left: 0.375rem;
 }
