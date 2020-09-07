@@ -5,6 +5,7 @@ import kotlinx.browser.document
 import kotlinx.html.dom.create
 import kotlinx.html.img
 import kotlinx.html.js.*
+import org.w3c.dom.get
 import react.*
 import react.dom.*
 import kotlin.math.abs
@@ -87,7 +88,7 @@ class App: RComponent<RProps,AppState>() {
                     }
                 }
             }
-            val speed = 80
+            val speed = 60
             if(hasPath) path.forEach { node -> animatePath(node, path.indexOf(node), count, speed) }
             else showNoPathDialog(count)
             reenablePointer(path.size, count, speed)
@@ -123,7 +124,7 @@ class App: RComponent<RProps,AppState>() {
                     }
                 }
             }
-            val speed = 40
+            val speed = 60
             if(hasPath) path.forEach { node -> animatePath(node, path.indexOf(node), count, speed) }
             else showNoPathDialog(count)
             reenablePointer(path.size, count, speed)
@@ -167,7 +168,7 @@ class App: RComponent<RProps,AppState>() {
                     }
                 }
             }
-            val speed = 80
+            val speed = 60
             if(hasPath) path.forEach { node -> animatePath(node, path.indexOf(node), count, speed) }
             else showNoPathDialog(count)
             reenablePointer(path.size, count, speed)
@@ -219,7 +220,7 @@ class App: RComponent<RProps,AppState>() {
                 }
                 if(hasPath) break
             }
-            val speed = 80
+            val speed = 60
             if(hasPath) path.forEach { node -> animatePath(node, path.indexOf(node), count, speed) }
             else showNoPathDialog(count)
             reenablePointer(path.size, count, speed)
@@ -312,6 +313,14 @@ class App: RComponent<RProps,AppState>() {
         recursiveDivision(orientation, 1, NUMBER_OF_ROWS, 1, NUMBER_OF_COLS, 0, 0)
     }
 
+    private fun reenableDropdown() {
+        document.getElementsByClassName("dropdown")[0]?.removeAttribute("style")
+    }
+
+    private fun hideDropdown() {
+        document.getElementsByClassName("dropdown")[0]?.setAttribute("style", "display: none;")
+    }
+
     private fun disablePointer() {
         document.getElementById("board")?.setAttribute("style", "pointer-events: none;")
         document.getElementById("control-panel")?.setAttribute("style", "pointer-events: none;")
@@ -320,7 +329,7 @@ class App: RComponent<RProps,AppState>() {
     private fun reenablePointer(length: Int, count: Int, speed: Int) {
         val board = document.getElementById("board")
         val controlPanel = document.getElementById("control-panel")
-        js("setTimeout(function() {board.removeAttribute('style'); controlPanel.removeAttribute('style');}, speed*length + 20*count)")
+        js("setTimeout(function() {board.removeAttribute('style'); controlPanel.removeAttribute('style'); }, speed*length + 20*count)")
     }
 
     private fun animatePath(node: Node?, i: Int, count: Int, speed: Int) {
@@ -433,28 +442,85 @@ class App: RComponent<RProps,AppState>() {
                     +"clear path"
                 }
                 button {
-                    attrs { onClickFunction = { cancellingWall() } }
-                    if(!state.cancellingWall) +"remove a tree" else +"add a tree"
-                }
-                button {
                     attrs { onClickFunction = { generateMaze() } }
-                    +"maze"
+                    +"generate maze"
                 }
                 button {
-                    attrs { onClickFunction = { bfs() } }
-                    +"breadth-first search"
+                    attrs { onClickFunction = { cancellingWall() } }
+                    +"remove tree"
+                    i {
+                        img {
+                            attrs {
+                                src = if(!state.cancellingWall) "https://raw.githubusercontent.com/rrbbrb/doggo-pathfinder/media/off-switch.png"
+                                else "https://raw.githubusercontent.com/rrbbrb/doggo-pathfinder/media/on-switch.png"
+                            }
+                        }
+                    }
                 }
-                button {
-                    attrs { onClickFunction = { dfs() } }
-                    +"depth-first search"
-                }
-                button {
-                    attrs { onClickFunction = { dijkstra() } }
-                    +"dijsktra"
-                }
-                button {
-                    attrs { onClickFunction = { aStar() } }
-                    +"a*"
+                var shownDropdown = false
+                div("algorithms") {
+                    button {
+                        attrs {
+                            onClickFunction = {
+                                if(shownDropdown) hideDropdown()
+                                else reenableDropdown()
+                                shownDropdown = !shownDropdown
+                            }
+                            onMouseOverFunction = {
+                                reenableDropdown()
+                            }
+                        }
+                        +"visualize algorithm"
+                        i {
+                            img {
+                                attrs {
+                                    src = "https://raw.githubusercontent.com/rrbbrb/doggo-pathfinder/media/caret.png"
+                                }
+                            }
+                        }
+                    }
+                    div("dropdown") {
+                        p {
+                            attrs {
+                                onClickFunction = {
+                                    bfs()
+                                    hideDropdown()
+                                    shownDropdown = false
+                                }
+                            }
+                            +"breadth-first search"
+                        }
+                        p {
+                            attrs {
+                                onClickFunction = {
+                                    dfs()
+                                    hideDropdown()
+                                    shownDropdown = false
+                                }
+                            }
+                            +"depth-first search"
+                        }
+                        p {
+                            attrs {
+                                onClickFunction = {
+                                    dijkstra()
+                                    hideDropdown()
+                                    shownDropdown = false
+                                }
+                            }
+                            +"dijsktra's algorithm"
+                        }
+                        p {
+                            attrs {
+                                onClickFunction = {
+                                    aStar()
+                                    hideDropdown()
+                                    shownDropdown = false
+                                }
+                            }
+                            +"a* search"
+                        }
+                    }
                 }
             }
             div {
