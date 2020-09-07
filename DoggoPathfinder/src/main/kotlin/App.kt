@@ -8,6 +8,7 @@ import kotlinx.html.js.*
 import react.*
 import react.dom.*
 import kotlin.math.abs
+import kotlin.random.Random
 
 const val NUMBER_OF_ROWS = 15
 const val NUMBER_OF_COLS = 25
@@ -225,6 +226,92 @@ class App: RComponent<RProps,AppState>() {
         }
     }
 
+    private fun generateMaze() {
+        resetAll()
+        val orientation = if(Random.nextBoolean()) "horizontal" else "vertical"
+
+        fun recursiveDivision(orientation: String, startRow: Int, endRow: Int, startCol: Int, endCol: Int,
+                              columnPassage: Int, rowPassage: Int) {
+            val nextOrientation =
+                if(orientation == "horizontal") {
+                    if(endRow - startRow == 1) "horizontal"
+                    else "vertical"
+                } else {
+                    if(endCol - startCol == 1) "vertical"
+                    else "horizontal"
+                }
+            when (orientation) {
+                "horizontal" -> {
+                    when {
+                        endCol == startCol || endRow == startRow-> return
+                        else -> {
+                            val wallColumn : Int? =
+                                if(rowPassage == 0 || endRow - startRow == 1) {
+                                    (startCol + 1 until endCol).filter { it -> it != rowPassage }.randomOrNull()
+                                } else {
+                                    (rowPassage-1..rowPassage+1).filter { it -> it != rowPassage && it > startCol && it < endCol }.randomOrNull()
+                                }
+                            val passageInCol : Int =
+                                if(endRow - startRow == 2) {
+                                    if(Random.nextBoolean()) endRow else startRow
+                                } else {
+                                    (startRow..endRow).random()
+                                }
+                            setState {
+                                if(wallColumn != null) {
+                                    for (wallRow in startRow..endRow) {
+                                        if (wallRow != passageInCol) {
+                                            val node = nodes[nodes.indexOf(Node(wallRow, wallColumn))]
+                                            if(node != start && node != end) walls += node
+                                        }
+                                    }
+                                }
+                            }
+                            if (wallColumn != null) {
+                                recursiveDivision(nextOrientation, startRow, endRow, startCol, wallColumn-1, passageInCol, rowPassage)
+                                recursiveDivision(nextOrientation, startRow, endRow, wallColumn+1, endCol, passageInCol, rowPassage)
+                            }
+                        }
+                    }
+                }
+                "vertical" -> {
+                    when {
+                        endRow == startRow || endCol == startCol -> return
+                        else -> {
+                            val wallRow : Int? =
+                                if(columnPassage == 0 || endCol - startCol == 1) {
+                                    (startRow+1 until endRow).filter { it -> it != columnPassage }.randomOrNull()
+                                } else {
+                                    (columnPassage-1..columnPassage+1).filter { it -> it != columnPassage && it > startRow && it < endRow }.randomOrNull()
+                                }
+                            val passageInRow : Int =
+                                if(endCol - startCol == 2) {
+                                    if(Random.nextBoolean()) endCol else startCol
+                                } else {
+                                    (startCol..endCol).random()
+                                }
+                            setState {
+                                if(wallRow != null) {
+                                    for(wallColumn in startCol..endCol) {
+                                        if(wallColumn != passageInRow) {
+                                            val node = nodes[nodes.indexOf(Node(wallRow, wallColumn))]
+                                            if(node != start && node != end) walls += node
+                                        }
+                                    }
+                                }
+                            }
+                            if (wallRow != null) {
+                                recursiveDivision(nextOrientation, startRow, wallRow-1, startCol, endCol, columnPassage, passageInRow)
+                                recursiveDivision(nextOrientation, wallRow+1, endRow, startCol, endCol, columnPassage, passageInRow)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        recursiveDivision(orientation, 1, NUMBER_OF_ROWS, 1, NUMBER_OF_COLS, 0, 0)
+    }
+
     private fun disablePointer() {
         document.getElementById("board")?.setAttribute("style", "pointer-events: none;")
         document.getElementById("control-panel")?.setAttribute("style", "pointer-events: none;")
@@ -348,6 +435,10 @@ class App: RComponent<RProps,AppState>() {
                 button {
                     attrs { onClickFunction = { cancellingWall() } }
                     if(!state.cancellingWall) +"remove a tree" else +"add a tree"
+                }
+                button {
+                    attrs { onClickFunction = { generateMaze() } }
+                    +"maze"
                 }
                 button {
                     attrs { onClickFunction = { bfs() } }
