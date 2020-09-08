@@ -62,4 +62,5 @@ Here are the algorithms you will find in this project:
 
 This project is mobile friendly. To change positions for Doggo or baseball,  simply tap on it and tap again on your desired cell. To draw trees on the board, tap on an empty cell.
 
-<img src="https://raw.githubusercontent.com/rrbbrb/doggo-pathfinder/media/mobile-heart.png" width="200" alt="Doggo Pathfinder Logo">
+<img src="https://raw.githubusercontent.com/rrbbrb/doggo-pathfinder/media/mobile-heart.png" width="250" alt="Doggo Pathfinder Logo">  <img src="https://raw.githubusercontent.com/rrbbrb/doggo-pathfinder/media/mobile-path.png" width="250" alt="Doggo Pathfinder Logo">
+
